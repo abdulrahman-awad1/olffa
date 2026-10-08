@@ -11,7 +11,7 @@
     </span>
     <h1 class="font-display mt-4 text-3xl text-emerald-900">أهلًا بك من جديد، {{ auth()->user()->name }}</h1>
     <p class="mt-3 text-sm text-ink/70">
-      فريق "الفة" بيراجع طلبك دلوقتي. هنبلغك فور وجود ترشيح مناسب أو أي تحديث على حالتك.
+      فريق "أُلفة" بيراجع طلبك دلوقتي. هنبلغك فور وجود ترشيح مناسب أو أي تحديث على حالتك.
     </p>
 
     <form method="POST" action="{{ route('logout') }}" class="mt-8">

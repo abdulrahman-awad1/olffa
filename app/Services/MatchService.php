@@ -20,6 +20,7 @@ use Illuminate\Support\Collection;
 class MatchService
 {
     public const MATCH_THRESHOLD = 60;
+
     private const COMMITMENT_WEIGHT = 0.4;
 
     private const COMMITMENT_RANK = [
@@ -45,9 +46,13 @@ class MatchService
         return $sameCategory ? 100 : 0;
     }
 
+    /** نفس بلد الإقامة. لو أي طرف ما كتبش بلده، مفيش تطابق (قبل كده null == null كان بيتحسب تطابق). */
     public static function locationSubScore(Profile $a, Profile $b): float
     {
-        return $a->residence_country === $b->residence_country ? 100 : 0;
+        $countryA = self::normalize($a->residence_country);
+        $countryB = self::normalize($b->residence_country);
+
+        return $countryA !== '' && $countryA === $countryB ? 100 : 0;
     }
 
     /** هل عمر $candidate واقع في المدى اللي حدده $viewer؟ */
@@ -66,32 +71,18 @@ class MatchService
      */
     public static function directionalScore(Profile $viewer, Profile $candidate): int
     {
-        $active = [];
-        if ($viewer->marital_important) {
-            $active[] = 'marital';
-        }
-        if ($viewer->location_important) {
-            $active[] = 'location';
-        }
-        if ($viewer->age_important) {
-            $active[] = 'age';
+        $commitment = self::commitmentSubScore($viewer, $candidate);
+        $criteria = self::activeCriteria($viewer);
+
+        if ($criteria === []) {
+            return (int) round($commitment);
         }
 
-        if (empty($active)) {
-            return (int) round(self::commitmentSubScore($viewer, $candidate));
-        }
+        $perCriterionWeight = (1 - self::COMMITMENT_WEIGHT) / count($criteria);
+        $total = self::COMMITMENT_WEIGHT * $commitment;
 
-        $remainingWeight = 1 - self::COMMITMENT_WEIGHT;
-        $perCriterionWeight = $remainingWeight / count($active);
-
-        $total = self::COMMITMENT_WEIGHT * self::commitmentSubScore($viewer, $candidate);
-
-        foreach ($active as $criterion) {
-            $total += $perCriterionWeight * match ($criterion) {
-                'marital' => self::maritalSubScore($viewer, $candidate),
-                'location' => self::locationSubScore($viewer, $candidate),
-                'age' => self::ageSubScore($viewer, $candidate),
-            };
+        foreach ($criteria as $criterion) {
+            $total += $perCriterionWeight * self::subScore($criterion, $viewer, $candidate);
         }
 
         return (int) round($total);
@@ -99,15 +90,15 @@ class MatchService
 
     /**
      * يرجّع كل الترشيحات المتبادلة لشخص معيّن، مرتبة من الأعلى للأقل،
-     * وفيها myScore (رضا الشخص عن المرشّح) و theirScore (رضا المرشّح عنه).
+     * وفيها my_score (رضا الشخص عن المرشّح) و their_score (رضا المرشّح عنه).
      */
     public static function findMatches(Profile $person, ?Collection $pool = null): Collection
     {
-        $oppositeGender = $person->gender === 'male' ? 'female' : 'male';
+        $oppositeGender = $person->isMale() ? 'female' : 'male';
 
         $candidates = $pool ?? Profile::query()
+            ->completed()
             ->where('gender', $oppositeGender)
-            ->where('completed', true)
             ->with('user')
             ->get();
 
@@ -122,5 +113,34 @@ class MatchService
             ->filter(fn (Profile $c) => $c->my_score >= self::MATCH_THRESHOLD && $c->their_score >= self::MATCH_THRESHOLD)
             ->sortByDesc('my_score')
             ->values();
+    }
+
+    /**
+     * المعايير اللي $viewer حددها كمهمة. السن ما بيتحسبش لو الشخص قال "مهم"
+     * بس ما كتبش مدى (أقل/أعلى سن)، بدل ما نخصم منه نسبة على حاجة ما حددهاش.
+     *
+     * @return list<string>
+     */
+    private static function activeCriteria(Profile $viewer): array
+    {
+        return array_keys(array_filter([
+            'marital' => $viewer->marital_important,
+            'location' => $viewer->location_important,
+            'age' => $viewer->age_important && $viewer->age_range_min && $viewer->age_range_max,
+        ]));
+    }
+
+    private static function subScore(string $criterion, Profile $viewer, Profile $candidate): float
+    {
+        return match ($criterion) {
+            'marital' => self::maritalSubScore($viewer, $candidate),
+            'location' => self::locationSubScore($viewer, $candidate),
+            'age' => self::ageSubScore($viewer, $candidate),
+        };
+    }
+
+    private static function normalize(?string $value): string
+    {
+        return mb_strtolower(trim((string) $value));
     }
 }

@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'الفة')
+@section('title', 'أُلفة')
 
 @section('content')
 <div class="h-2 bg-emerald-900"></div>
 <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-  <a href="{{ route('home') }}" class="font-display text-2xl text-emerald-900">الفة</a>
+  <a href="{{ route('home') }}" class="font-display text-2xl text-emerald-900">أُلفة</a>
   @auth
     <a href="{{ auth()->user()->isAdmin() ? route('admin.dashboard') : route('dashboard') }}" class="text-sm text-ink/60 hover:text-ink">حسابي</a>
   @else
@@ -15,7 +15,7 @@
 
 <div class="geo-pattern">
   <div class="mx-auto max-w-3xl px-6 py-16 text-center">
-    <h1 class="font-display text-6xl leading-tight text-emerald-900 md:text-7xl">الفة</h1>
+    <h1 class="font-display text-6xl leading-tight text-emerald-900 md:text-7xl">أُلفة</h1>
     <p class="mx-auto mt-6 max-w-xl text-lg text-ink/80 md:text-xl">
       نسأل الله أن يرزقك شريك حياة صالح يكون لك سكنًا. مبادرة شرعية
       لمساعدة الشباب والشابات على إيجاد شريك الحياة وفق ضوابط الشريعة الإسلامية.
@@ -75,6 +75,6 @@
 </div>
 
 <footer class="border-t border-emerald-900/10 py-8 text-center text-xs text-ink/50">
-  الفة — جميع الحقوق محفوظة
+  أُلفة — جميع الحقوق محفوظة
 </footer>
 @endsection

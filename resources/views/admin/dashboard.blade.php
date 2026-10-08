@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'لوحة تحكم الفة')
+@section('title', 'لوحة تحكم أُلفة')
 
 @section('content')
 <main class="min-h-screen bg-sand-50 px-6 py-10">
@@ -8,7 +8,7 @@
 
     <div class="mb-8 flex items-center justify-between">
       <div>
-        <h1 class="font-display text-3xl text-emerald-900">لوحة تحكم الفة</h1>
+        <h1 class="font-display text-3xl text-emerald-900">لوحة تحكم أُلفة</h1>
         <p class="text-sm text-ink/60">{{ $registrants->total() }} نتيجة معروضة</p>
       </div>
       <form method="POST" action="{{ route('admin.logout') }}">

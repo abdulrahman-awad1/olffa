@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\RegisterController;
+use App\Http\Controllers\ThankYouController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,14 +15,15 @@ use Illuminate\Support\Facades\Route;
 | صفحات عامة
 |--------------------------------------------------------------------------
 */
-Route::get('/', HomeController::class . '@index')->name('home');
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
-Route::get('/register/{gender}', [RegisterController::class, 'create'])->name('register.create');
-Route::post('/register/{gender}', [RegisterController::class, 'store'])->name('register.store');
+// {gender} = male | female (أي قيمة تانية بترجّع 404 تلقائيًا بسبب الـ enum)
+Route::middleware('guest')->prefix('register/{gender}')->name('register.')->group(function () {
+    Route::get('/', [RegisterController::class, 'create'])->name('create');
+    Route::post('/', [RegisterController::class, 'store'])->middleware('throttle:10,1')->name('store');
+});
 
-Route::get('/thank-you', function () {
-    return view('thankyou', ['profile' => auth()->user()->profile]);
-})->middleware('auth')->name('thankyou');
+Route::get('/thank-you', ThankYouController::class)->middleware('auth')->name('thankyou');
 
 /*
 |--------------------------------------------------------------------------
@@ -30,13 +32,13 @@ Route::get('/thank-you', function () {
 */
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
-    Route::post('/login', [LoginController::class, 'store']);
+    Route::post('/login', [LoginController::class, 'store'])->middleware('throttle:5,1');
 });
-Route::post('/logout', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');
 
-Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware('auth')
-    ->name('dashboard');
+Route::middleware('auth')->group(function () {
+    Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -46,7 +48,7 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware('guest')->group(function () {
         Route::get('/login', [AdminAuthController::class, 'create'])->name('login');
-        Route::post('/login', [AdminAuthController::class, 'store']);
+        Route::post('/login', [AdminAuthController::class, 'store'])->middleware('throttle:5,1');
     });
 
     Route::middleware(['auth', 'admin'])->group(function () {

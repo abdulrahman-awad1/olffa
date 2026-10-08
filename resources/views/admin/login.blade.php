@@ -6,7 +6,7 @@
 <main class="flex min-h-screen items-center justify-center bg-sand-50 px-6">
   <form method="POST" action="{{ route('admin.login') }}" class="w-full max-w-sm rounded-2xl border border-emerald-900/10 bg-white p-8">
     @csrf
-    <h1 class="font-display text-2xl text-emerald-900">لوحة تحكم الفة</h1>
+    <h1 class="font-display text-2xl text-emerald-900">لوحة تحكم أُلفة</h1>
     <p class="mt-1 text-sm text-ink/60">دخول فريق المبادرة فقط</p>
 
     @if ($errors->any())

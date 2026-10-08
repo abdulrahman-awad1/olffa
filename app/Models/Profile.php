@@ -2,67 +2,17 @@
 
 namespace App\Models;
 
+use App\Enums\Gender;
+use App\Support\ProfileShareText;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Profile extends Model
 {
     use HasFactory;
-
-    protected $fillable = [
-        'user_id', 'code', 'gender', 'birth_date', 'nationality', 'residence_country',
-        'height', 'weight', 'skin_color',
-        'governorate', 'current_residence', 'marital_home_type',
-        'commitment_level', 'prays', 'beard', 'hijab_type', 'religious_notes', 'is_smoker',
-        'education', 'occupation', 'marital_status', 'children_count',
-        'has_chronic_disease', 'chronic_disease_details',
-        'about_me', 'partner_preferences', 'age_range_min', 'age_range_max',
-        'desired_bride_education', 'desired_bride_work', 'desired_bride_hijab',
-        'age_important', 'location_important', 'marital_important',
-        'contact_whatsapp', 'contact_notes',
-        'status', 'admin_notes', 'current_step', 'completed',
-    ];
-
-    protected function casts(): array
-    {
-        return [
-            'birth_date' => 'date',
-            'age_important' => 'boolean',
-            'location_important' => 'boolean',
-            'marital_important' => 'boolean',
-            'is_smoker' => 'boolean',
-            'has_chronic_disease' => 'boolean',
-            'completed' => 'boolean',
-        ];
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    protected static function booted(): void
-    {
-        static::creating(function (Profile $profile) {
-            if (empty($profile->code)) {
-                $profile->code = self::generateUniqueCode();
-            }
-        });
-    }
-
-    public static function generateUniqueCode(): string
-    {
-        do {
-            $code = (string) random_int(10000000, 99999999);
-        } while (self::where('code', $code)->exists());
-
-        return $code;
-    }
-
-    public function getAgeAttribute(): ?int
-    {
-        return $this->birth_date?->age;
-    }
 
     // ---------- تسميات عربية للعرض في الواجهات ----------
 
@@ -77,7 +27,7 @@ class Profile extends Model
         'single' => 'أعزب / لم يسبق الزواج',
         'divorced' => 'مطلّق',
         'widowed' => 'أرمل',
-        'married'=>'متزوج واريد التعدد'
+        'married' => 'متزوج واريد التعدد',
     ];
 
     public const MARITAL_LABELS_FEMALE = [
@@ -141,195 +91,193 @@ class Profile extends Model
         'negotiable' => 'حسب الاتفاق',
     ];
 
+    public const NATIONALITIES = [
+        'مصري', 'سعودي', 'إماراتي', 'كويتي', 'قطري', 'بحريني', 'عماني', 'أردني',
+        'فلسطيني', 'سوري', 'عراقي', 'لبناني', 'يمني', 'سوداني', 'ليبي', 'تونسي',
+        'جزائري', 'مغربي', 'أخرى',
+    ];
+
+    protected $fillable = [
+        'user_id', 'code', 'gender', 'birth_date', 'nationality', 'residence_country',
+        'height', 'weight', 'skin_color',
+        'governorate', 'current_residence', 'marital_home_type',
+        'commitment_level', 'prays', 'beard', 'hijab_type', 'religious_notes', 'is_smoker',
+        'education', 'occupation', 'marital_status', 'children_count',
+        'has_chronic_disease', 'chronic_disease_details',
+        'about_me', 'partner_preferences', 'age_range_min', 'age_range_max',
+        'desired_bride_education', 'desired_bride_work', 'desired_bride_hijab',
+        'age_important', 'location_important', 'marital_important',
+        'contact_whatsapp', 'contact_notes',
+        'status', 'admin_notes', 'current_step', 'completed',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'birth_date' => 'date',
+            'age_important' => 'boolean',
+            'location_important' => 'boolean',
+            'marital_important' => 'boolean',
+            'is_smoker' => 'boolean',
+            'has_chronic_disease' => 'boolean',
+            'completed' => 'boolean',
+        ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Profile $profile) {
+            if (empty($profile->code)) {
+                $profile->code = self::generateUniqueCode();
+            }
+        });
+    }
+
+    public static function generateUniqueCode(): string
+    {
+        do {
+            $code = (string) random_int(10000000, 99999999);
+        } while (self::where('code', $code)->exists());
+
+        return $code;
+    }
+
+    // ---------- Relations ----------
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    // ---------- Scopes ----------
+
+    /** الاستمارات اللي المستخدم خلّصها كاملة. */
+    public function scopeCompleted(Builder $query): Builder
+    {
+        return $query->where('completed', true);
+    }
+
+    /**
+     * فلاتر لوحة الأدمن. القيم لازم تتعمل لها validation قبل ما توصل هنا.
+     *
+     * @param  array{gender?: ?string, status?: ?string, nationality?: ?string}  $filters
+     */
+    public function scopeFilter(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->when($filters['gender'] ?? null, fn (Builder $q, string $gender) => $q->where('gender', $gender))
+            ->when($filters['status'] ?? null, fn (Builder $q, string $status) => $q->where('status', $status))
+            ->when($filters['nationality'] ?? null, fn (Builder $q, string $nationality) => $q->where('nationality', $nationality));
+    }
+
+    // ---------- Accessors ----------
+
+    protected function age(): Attribute
+    {
+        return Attribute::get(fn () => $this->birth_date?->age);
+    }
+
+    // ---------- Gender / marital helpers ----------
+
+    public function isMale(): bool
+    {
+        return $this->gender === Gender::Male->value;
+    }
+
+    public function isFemale(): bool
+    {
+        return $this->gender === Gender::Female->value;
+    }
+
+    public function genderLabel(): string
+    {
+        return $this->isMale() ? 'عريس' : 'عروس';
+    }
+
+    /** سبق له/لها الزواج (مطلّق، أرمل، أو متزوج حاليًا ويريد التعدد). */
+    public function isMarriedBefore(): bool
+    {
+        return in_array($this->marital_status, ['divorced', 'widowed', 'married'], true);
+    }
+
+    /** @return array<string, string> */
+    public static function maritalLabelsFor(string $gender): array
+    {
+        return $gender === Gender::Female->value ? self::MARITAL_LABELS_FEMALE : self::MARITAL_LABELS_MALE;
+    }
+
+    /** @return array<string, string> */
+    public static function commitmentLabelsFor(string $gender): array
+    {
+        return $gender === Gender::Female->value ? self::COMMITMENT_LABELS_FEMALE : self::COMMITMENT_LABELS_MALE;
+    }
+
+    // ---------- Labels ----------
+
     public function statusLabel(): string
     {
-        return self::STATUS_LABELS[$this->status] ?? $this->status;
+        return (string) $this->labelFor(self::STATUS_LABELS, $this->status);
     }
 
     public function maritalStatusLabel(): string
     {
-        $labels = $this->gender === 'female' ? self::MARITAL_LABELS_FEMALE : self::MARITAL_LABELS_MALE;
-
-        return $labels[$this->marital_status] ?? (string) $this->marital_status;
+        return (string) $this->labelFor(self::maritalLabelsFor((string) $this->gender), $this->marital_status);
     }
 
     public function commitmentLabel(): string
     {
-        $labels = $this->gender === 'female' ? self::COMMITMENT_LABELS_FEMALE : self::COMMITMENT_LABELS_MALE;
-
-        return $labels[$this->commitment_level] ?? (string) $this->commitment_level;
+        return (string) $this->labelFor(self::commitmentLabelsFor((string) $this->gender), $this->commitment_level);
     }
 
     public function praysLabel(): string
     {
-        return self::PRAYS_LABELS[$this->prays] ?? (string) $this->prays;
+        return (string) $this->labelFor(self::PRAYS_LABELS, $this->prays);
     }
 
     public function beardLabel(): ?string
     {
-        return self::BEARD_LABELS[$this->beard] ?? $this->beard;
+        return $this->labelFor(self::BEARD_LABELS, $this->beard);
     }
 
     public function hijabLabel(): ?string
     {
-        return self::HIJAB_LABELS[$this->hijab_type] ?? $this->hijab_type;
+        return $this->labelFor(self::HIJAB_LABELS, $this->hijab_type);
     }
 
     public function desiredBrideHijabLabel(): ?string
     {
-        return self::DESIRED_HIJAB_LABELS[$this->desired_bride_hijab] ?? $this->desired_bride_hijab;
+        return $this->labelFor(self::DESIRED_HIJAB_LABELS, $this->desired_bride_hijab);
     }
 
     public function skinColorLabel(): ?string
     {
-        return self::SKIN_COLOR_LABELS[$this->skin_color] ?? $this->skin_color;
+        return $this->labelFor(self::SKIN_COLOR_LABELS, $this->skin_color);
     }
 
     public function maritalHomeLabel(): ?string
     {
-        return self::MARITAL_HOME_LABELS[$this->marital_home_type] ?? $this->marital_home_type;
+        return $this->labelFor(self::MARITAL_HOME_LABELS, $this->marital_home_type);
     }
 
     public function desiredBrideWorkLabel(): ?string
     {
-        return self::WORK_PREFERENCE_LABELS[$this->desired_bride_work] ?? $this->desired_bride_work;
+        return $this->labelFor(self::WORK_PREFERENCE_LABELS, $this->desired_bride_work);
     }
 
-    public function isMarriedBefore(): bool
+    /** بيرجّع التسمية العربية للقيمة، أو القيمة نفسها لو مالهاش تسمية. */
+    private function labelFor(array $labels, ?string $value): ?string
     {
-        return in_array($this->marital_status, ['divorced', 'widowed'], true);
+        if ($value === null) {
+            return null;
+        }
+
+        return $labels[$value] ?? $value;
     }
 
-    /**
-     * نص جاهز للنشر (مثلاً على صفحة فيسبوك)، بيعرّف صاحبه بالكود بس
-     * من غير أي اسم أو بيانات تواصل، حفاظًا على الخصوصية. الشكل هنا
-     * مبني على قالب صفحات الفيسبوك المعروفة، لكن بالبيانات الموجودة
-     * عندنا فعلًا بس - من غير إضافة أي حقول جديدة.
-     */
+    // ---------- Sharing ----------
+
     public function shareText(): string
     {
-        $isMale = $this->gender === 'male';
-        $roleWord = $isMale ? 'عريس' : 'عروسة';
-        $roleEmoji = $isMale ? '👨' : '👩';
-        $titleEmoji = $isMale ? '💍' : '👰';
-        $partnerWord = $isMale ? 'الزوجة' : 'الزوج';
-
-        $lines = [];
-        $lines[] = "{$titleEmoji} استمارة بيانات {$roleWord}";
-        $lines[] = '';
-        $lines[] = "{$roleWord} كود: {$this->code}";
-        $lines[] = '';
-
-        // أولًا: المعلومات الشخصية
-        $lines[] = "أولًا: المعلومات الشخصية {$roleEmoji}";
-        $lines[] = '';
-        if ($this->age) {
-            $lines[] = "• العمر: {$this->age}";
-        }
-        if ($this->nationality) {
-            $lines[] = "• الجنسية: {$this->nationality}";
-        }
-        if ($this->governorate) {
-            $lines[] = "• المحافظة: {$this->governorate}";
-        }
-        if ($this->current_residence) {
-            $lines[] = "• مكان الإقامة: {$this->current_residence}";
-        }
-        if ($this->weight) {
-            $lines[] = "• الوزن: {$this->weight}";
-        }
-        if ($this->height) {
-            $lines[] = "• الطول: {$this->height}";
-        }
-        if ($this->skin_color) {
-            $lines[] = '• لون البشرة: '.$this->skinColorLabel();
-        }
-        $lines[] = '• الحالة الاجتماعية: '.$this->maritalStatusLabel();
-        $lines[] = ($isMale ? '• هل أنت مدخن؟ ' : '• هل أنتِ مدخنة؟ ').($this->is_smoker
-                ? ($isMale ? 'مدخن' : 'مدخنة')
-                : ($isMale ? 'غير مدخن' : 'غير مدخنة'));
-        $lines[] = '';
-
-        // ثانيًا: التعليم والعمل
-        if ($this->education || $this->occupation) {
-            $lines[] = 'ثانيًا: التعليم والعمل 🎓';
-            $lines[] = '';
-            if ($this->education) {
-                $lines[] = "• المؤهل الدراسي: {$this->education}";
-            }
-            if ($this->occupation) {
-                $lines[] = "• المهنة: {$this->occupation}";
-            }
-            $lines[] = '';
-        }
-
-        // ثالثًا: الالتزام الديني
-        $lines[] = 'ثالثًا: الالتزام الديني 🕌';
-        $lines[] = '';
-        $lines[] = '• مستوى الالتزام: '.$this->commitmentLabel();
-        $lines[] = '• هل تحافظ على الصلوات الخمس؟ '.$this->praysLabel();
-        if ($isMale && $this->beard) {
-            $lines[] = '• اللحية: '.$this->beardLabel();
-        }
-        if (! $isMale && $this->hijab_type) {
-            $lines[] = '• الحجاب: '.$this->hijabLabel();
-        }
-        $lines[] = '';
-
-        // رابعًا: السكن (للعريس فقط، لأنها بياناته هو)
-        if ($isMale && $this->marital_home_type) {
-            $lines[] = 'رابعًا: السكن 🏠';
-            $lines[] = '';
-            $lines[] = '• نوع سكن الزوجية: '.$this->maritalHomeLabel();
-            $lines[] = '';
-        }
-
-        // خامسًا: نبذة عنه/عنها
-        if ($this->about_me) {
-            $lines[] = 'خامسًا: نبذة شخصية 📝';
-            $lines[] = '';
-            $lines[] = $this->about_me;
-            $lines[] = '';
-        }
-
-        // سادسًا: المواصفات المطلوبة في الطرف الآخر
-        $lines[] = "سادسًا: مواصفات {$partnerWord} المطلوبة ❤️";
-        $lines[] = '';
-        if ($this->partner_preferences) {
-            $lines[] = "• أهم الصفات المطلوبة: {$this->partner_preferences}";
-        }
-        if ($this->age_important && $this->age_range_min && $this->age_range_max) {
-            $lines[] = "• السن المناسب: {$this->age_range_min} إلى {$this->age_range_max}";
-        }
-        $lines[] = '• أهمية نفس بلد الإقامة: '.($this->location_important ? 'مهم' : 'مش شرط');
-        $lines[] = '• أهمية نفس الحالة الاجتماعية: '.($this->marital_important ? 'مهم' : 'مش شرط');
-        if ($isMale) {
-            if ($this->desired_bride_education) {
-                $lines[] = "• المؤهل المطلوب: {$this->desired_bride_education}";
-            }
-            if ($this->desired_bride_work) {
-                $lines[] = '• هل تقبل أن تعمل الزوجة؟ '.$this->desiredBrideWorkLabel();
-            }
-            if ($this->desired_bride_hijab) {
-                $lines[] = '• حجاب الزوجة المطلوب: '.$this->desiredBrideHijabLabel();
-            }
-        }
-        $lines[] = '';
-
-        // سابعًا: الزواج السابق
-        $lines[] = 'سابعًا: الحالة الاجتماعية السابقة 👶';
-        $lines[] = '';
-        $lines[] = '• هل سبق لك الزواج؟ '.($this->isMarriedBefore() ? 'نعم' : 'لا');
-        if ($this->isMarriedBefore() && $this->children_count) {
-            $lines[] = "• عدد الأبناء: {$this->children_count}";
-        }
-        $lines[] = '';
-
-        $lines[] = '---';
-        $lines[] = '';
-        $lines[] = '📢 ملحوظة هامة';
-        $lines[] = "جميع البيانات المذكورة تحت مسؤولية {$roleWord} نفسه، ومبادرة \"الفة\" غير مسؤولة عن أي تعارض في المعلومات.";
-
-        return implode("\n", $lines);
+        return (new ProfileShareText($this))->build();
     }
 }

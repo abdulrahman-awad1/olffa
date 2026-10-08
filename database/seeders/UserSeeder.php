@@ -13,7 +13,7 @@ class UserSeeder extends Seeder
     {
         // حساب الأدمن - غيّر كلمة المرور فورًا بعد أول تسجيل دخول
         $admin = User::create([
-            'name' => 'أدمن الفة',
+            'name' => 'أدمن أُلفة',
             'email' => 'admin@alfa.test',
             'phone' => '01000000000',
             'password' => Hash::make('password123'),

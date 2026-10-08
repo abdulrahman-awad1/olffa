@@ -36,7 +36,7 @@ return new class extends Migration
             // التعليم والحالة الاجتماعية
             $table->string('education')->nullable();
             $table->string('occupation')->nullable();
-            $table->enum('marital_status', ['single', 'divorced', 'widowed'])->nullable();
+            $table->enum('marital_status', ['single', 'divorced', 'widowed','married'])->nullable();
             $table->unsignedTinyInteger('children_count')->nullable();
             $table->boolean('has_chronic_disease')->default(false);
             $table->text('chronic_disease_details')->nullable();

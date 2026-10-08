@@ -2,27 +2,32 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\Gender;
 use App\Http\Controllers\Controller;
 use App\Models\Profile;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): View
     {
-        $query = Profile::query()->with('user')->where('completed', true);
+        // valid() بيرجّع الفلاتر السليمة بس، وأي قيمة غلط في الرابط بتتتجاهل بدل ما تعمل redirect.
+        $filters = Validator::make($request->query(), [
+            'gender' => ['nullable', Rule::enum(Gender::class)],
+            'status' => ['nullable', Rule::in(array_keys(Profile::STATUS_LABELS))],
+            'nationality' => ['nullable', 'string', 'max:100'],
+        ])->valid();
 
-        if ($request->filled('gender')) {
-            $query->where('gender', $request->string('gender'));
-        }
-        if ($request->filled('status')) {
-            $query->where('status', $request->string('status'));
-        }
-        if ($request->filled('nationality')) {
-            $query->where('nationality', $request->string('nationality'));
-        }
-
-        $registrants = $query->latest()->paginate(20)->withQueryString();
+        $registrants = Profile::query()
+            ->with('user')
+            ->completed()
+            ->filter($filters)
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
 
         $nationalities = Profile::query()
             ->whereNotNull('nationality')
