@@ -23,7 +23,7 @@ Route::middleware('guest')->prefix('register/{gender}')->name('register.')->grou
     Route::post('/', [RegisterController::class, 'store'])->middleware('throttle:10,1')->name('store');
 });
 
-Route::get('/thank-you', ThankYouController::class)->middleware('auth')->name('thankyou');
+Route::get('/thank-you', ThankYouController::class)->middleware(['auth', 'no-store'])->name('thankyou');
 
 /*
 |--------------------------------------------------------------------------
@@ -35,7 +35,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [LoginController::class, 'store'])->middleware('throttle:5,1');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'no-store'])->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 });
@@ -51,7 +51,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/login', [AdminAuthController::class, 'store'])->middleware('throttle:5,1');
     });
 
-    Route::middleware(['auth', 'admin'])->group(function () {
+    Route::middleware(['auth', 'admin', 'no-store'])->group(function () {
         Route::post('/logout', [AdminAuthController::class, 'destroy'])->name('logout');
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
         Route::get('/registrants/{profile}', [RegistrantController::class, 'show'])->name('registrants.show');

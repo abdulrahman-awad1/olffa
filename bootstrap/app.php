@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\PreventBackHistory;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -11,11 +14,24 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // هذا هو السطر المهم اللي لازم تضيفه في bootstrap/app.php
-        // بتاعك عشان الـ admin middleware يشتغل:
         $middleware->alias([
-            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'admin' => EnsureUserIsAdmin::class,
+            'no-store' => PreventBackHistory::class,
         ]);
+
+        // الضيف اللي يفتح صفحة محمية: صفحات الأدمن -> دخول الأدمن، غيرها -> دخول اليوزر.
+        $middleware->redirectGuestsTo(
+            fn (Request $request) => $request->is('admin', 'admin/*')
+                ? route('admin.login')
+                : route('login')
+        );
+
+        // اللي مسجّل دخول وفتح صفحة للضيوف بس (login / register): نوديه لصفحته.
+        $middleware->redirectUsersTo(
+            fn (Request $request) => $request->user()?->isAdmin()
+                ? route('admin.dashboard')
+                : route('dashboard')
+        );
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

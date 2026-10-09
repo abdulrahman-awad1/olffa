@@ -160,14 +160,16 @@ class Profile extends Model
     /**
      * فلاتر لوحة الأدمن. القيم لازم تتعمل لها validation قبل ما توصل هنا.
      *
-     * @param  array{gender?: ?string, status?: ?string, nationality?: ?string}  $filters
+     * @param  array{gender?: ?string, status?: ?string, nationality?: ?string, code?: ?string}  $filters
      */
     public function scopeFilter(Builder $query, array $filters): Builder
     {
         return $query
             ->when($filters['gender'] ?? null, fn (Builder $q, string $gender) => $q->where('gender', $gender))
             ->when($filters['status'] ?? null, fn (Builder $q, string $status) => $q->where('status', $status))
-            ->when($filters['nationality'] ?? null, fn (Builder $q, string $nationality) => $q->where('nationality', $nationality));
+            ->when($filters['nationality'] ?? null, fn (Builder $q, string $nationality) => $q->where('nationality', $nationality))
+            // بحث بالكود: بيطابق بداية الكود، فالكود الكامل (8 أرقام) بيرجّع صاحبه بالظبط.
+            ->when($filters['code'] ?? null, fn (Builder $q, string $code) => $q->where('code', 'like', $code.'%'));
     }
 
     // ---------- Accessors ----------
