@@ -21,7 +21,7 @@
       لمساعدة الشباب والشابات على إيجاد شريك الحياة وفق ضوابط الشريعة الإسلامية.
     </p>
     <div class="mt-10 inline-flex items-baseline gap-2 rounded-full border border-bronze-500/40 bg-white/60 px-6 py-3">
-      <span class="font-display text-3xl text-bronze-600">{{ number_format($count) }}</span>
+      <span class="font-display text-3xl text-bronze-600">+100</span>
       <span class="text-sm text-ink/70">شخص انضموا إلى المبادرة</span>
     </div>
   </div>
