@@ -43,7 +43,7 @@
 
             <div class="mt-4 flex flex-col gap-3 sm:flex-row">
                 @if (config('alfa.facebook_page_username'))
-                    <a href="https://m.me/{{ config('alfa.facebook_page_username') }}"
+                    <a href="https://{{ config('alfa.facebook_page_username') }}"
                        target="_blank" rel="noopener"
                        class="flex flex-1 items-center justify-center gap-2 rounded-full bg-emerald-900 px-6 py-3 text-sm font-medium text-sand-50 hover:bg-emerald-800">
                         أرسل لصفحتنا على ماسنجر
